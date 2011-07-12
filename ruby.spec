@@ -1,6 +1,6 @@
 %global	rubyxver	1.8
 %global	rubyver	1.8.7
-%global	_patchlevel	334
+%global	_patchlevel	352
 
 %global	dotpatchlevel	%{?_patchlevel:.%{_patchlevel}}
 %global	patchlevel	%{?_patchlevel:-p%{_patchlevel}}
@@ -17,7 +17,7 @@
 
 Name:		ruby
 Version:	%{rubyver}%{?dotpatchlevel}
-Release:	3%{?dist}
+Release:	1%{?dist}
 # Please check if ruby upstream changes this to "Ruby or GPLv2+"
 License:	Ruby or GPLv2
 URL:		http://www.ruby-lang.org/
@@ -540,6 +540,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/ri
 
 %changelog
+* Tue Jul 12 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-1
+- new upstream release
+
 * Tue Apr 26 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.334-3
 - Do not depend on AutoConf >= 2.60
 
