@@ -17,7 +17,7 @@
 
 Name:		ruby
 Version:	%{rubyver}%{?dotpatchlevel}
-Release:	1%{?dist}
+Release:	2%{?dist}
 # Please check if ruby upstream changes this to "Ruby or GPLv2+"
 License:	Ruby or GPLv2
 URL:		http://www.ruby-lang.org/
@@ -216,14 +216,13 @@ rb_cv_func_strtod=no
 export rb_cv_func_strtod
 
 # bug 489990
-CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
+#CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
+CFLAGS="%{optflags} -D__LINUX__ -D_GNU_SOURCE -D_LARGEFILE64_SOURCE"
 export CFLAGS
 
 %configure \
-	--with-default-kcode=none \
 	--enable-shared \
 	--enable-pthread \
-	--disable-rpath \
 %if 0%{?fedora} >= 13
 	--with-readline-include=%{_includedir}/readline5 \
 	--with-readline-lib=%{_libdir}/readline5 \
@@ -540,6 +539,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/ri
 
 %changelog
+* Wed Aug 03 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-2
+- Test new build flags
+
 * Tue Jul 12 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-1
 - new upstream release
 
