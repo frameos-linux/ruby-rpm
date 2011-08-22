@@ -12,12 +12,10 @@
 %{!?sitearchbase:	%global sitearchbase	%{vendorarchbase}/site_ruby}
 
 %global	_normalized_cpu	%(echo %{_target_cpu} | sed 's/^ppc/powerpc/;s/i.86/i386/;s/sparcv./sparc/')
-# Sun Dec 25 17:00:00 2010 +0000
-%global	ruby_tk_git_revision	f30eca26639ce538339bc488c7ed1fd397b0c13f
 
 Name:		ruby
 Version:	%{rubyver}%{?dotpatchlevel}
-Release:	4%{?dist}
+Release:	5%{?dist}
 # Please check if ruby upstream changes this to "Ruby or GPLv2+"
 License:	Ruby or GPLv2
 URL:		http://www.ruby-lang.org/
@@ -30,11 +28,9 @@ BuildRequires: 	readline-devel
 
 BuildRequires:	db4-devel
 BuildRequires:	gdbm-devel
-BuildRequires:	libX11-devel
+#BuildRequires:	libX11-devel
 BuildRequires:	ncurses-devel
 BuildRequires:	openssl-devel
-BuildRequires:	tcl-devel
-BuildRequires:	tk-devel
 
 BuildRequires:	autoconf 
 
@@ -43,17 +39,6 @@ BuildRequires:	byacc
 
 # Official ruby source release tarball
 Source0:	ftp://ftp.ruby-lang.org/pub/%{name}/%{rubyxver}/%{name}-%{arcver}.tar.bz2
-
-# Source100: contains ext/tk directory of the ruby source head
-# see http://lists.fedoraproject.org/pipermail/ruby-sig/2010-May/000096.html 
-# and bug 560053, 590503.
-# To checkout, run the following commands
-# (replacing 'ruby_tk_git_revision' with the value of the macro above):
-# *  git clone http://github.com/ruby/ruby.git
-# *  cd ruby
-# *  git checkout %%{ruby_tk_git_revision} ext/tk
-# *  tar czvf ruby-rev%%{ruby_tk_git_revision}-ext_tk.tar.gz ext/tk
-Source100:	ruby-rev%{ruby_tk_git_revision}-ext_tk.tar.gz
 
 # Patches 23, 29, and 33 brought over from ruby 1.8.6
 #  (updated to apply against 1.8.7 source)
@@ -83,6 +68,10 @@ Obsoletes:	%{name}-mode < 1.8.7
 # remove old documentation
 # And no Provides here
 Obsoletes:	%{name}-docs < 1.8.7
+
+#
+# Remove TCL/TK
+Obsoletes: ruby-tcltk
 
 %description
 Ruby is the interpreted scripting language for quick and easy
@@ -176,32 +165,14 @@ Ruby methods, classes and modules. For methods, it shows you the calling
 sequence and a description. For classes and modules, it shows a synopsis
 along with a list of the methods the class or module implements.
 
-##
-## ruby-tcltk
-##
-%package	tcltk
-Summary:	Tcl/Tk interface for scripting language Ruby
-Group:		Development/Languages
-Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
-
-%description tcltk
-Tcl/Tk interface for the object-oriented scripting language Ruby.
-
 %prep
-%setup -q -c -a 100
+%setup -q -c 
 pushd %{name}-%{arcver}
 %patch23 -p1
 %patch29 -p1
 %patch33 -p1
 %patch34 -p1
 %patch100 -p1
-
-( 
-	cd ext
-	rm -rf tk
-	cp -a ../../ext/tk tk
-	find tk -type d -name \.svn | sort -r | xargs rm -rf
-) 
 
 popd
 
@@ -216,13 +187,14 @@ rb_cv_func_strtod=no
 export rb_cv_func_strtod
 
 # bug 489990
-#CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing"
-CFLAGS=" -fno-strict-aliasing"
+CFLAGS="-fno-strict-aliasing"
+#CFLAGS="%{optflags} -D__LINUX__ -D_GNU_SOURCE -D_LARGEFILE64_SOURCE"
 export CFLAGS
 
 %configure \
 	--enable-shared \
-	--enable-pthread \
+	--without-X11 \
+	--disable-pthread \
 %if 0%{?fedora} >= 13
 	--with-readline-include=%{_includedir}/readline5 \
 	--with-readline-lib=%{_libdir}/readline5 \
@@ -290,7 +262,7 @@ mkdir tmp-ruby-docs
 pushd tmp-ruby-docs
 
 mkdir \
-	ruby ruby-libs ruby-tcltk irb
+	ruby ruby-libs irb
 
 # First gather all samples
 cp -a  ../%{name}-%{arcver}/sample/ ruby
@@ -343,22 +315,6 @@ set -x
 mv ruby-libs/doc/irb/* irb
 rm -rf ruby-libs/doc/irb
 
-# tcltk
-mv ruby-libs/ext/tk/* ruby-tcltk/
-rmdir ruby-libs/ext/tk
-
-## Fix encodings
-pushd ruby-tcltk
-cd sample
-find . -path ./demos-jp/\*.rb -or -path ./tkoptdb\*.rb -or -path ./msgs_rb2/ja.msg | \
-	xargs sed -i -e 's|euc-jp|utf-8|'
-sed -i \
-	-e '/KCODE =/s|euc|utf-8|' -e 's|EUC-JP|UTF-8|' \
-	demos-jp/widget
-cd ..
-sed -i -e 's|EUC-JP|UTF-8|' README.1st
-popd
-
 # done w/ docs
 popd
 
@@ -381,7 +337,6 @@ for i in \
 	sed -i -e '/^#!.*/,1D' $i
 done
 # The following can be executable
-chmod 0755 $RPM_BUILD_ROOT%{vendorlibbase}/%{rubyxver}/tkextlib/pkg_checker.rb
 chmod 0644 $RPM_BUILD_ROOT%{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/*.h
 
 find $RPM_BUILD_ROOT/ -name "*.so" -exec chmod 755 {} \;
@@ -444,14 +399,6 @@ rm -rf $RPM_BUILD_ROOT
 %dir	%{vendorarchbase}/%{rubyxver}
 %{sitearchbase}
 %endif
-## the following files should goes into ruby-tcltk package.
-%exclude	%{vendorlibbase}/%{rubyxver}/*tk.rb
-%exclude	%{vendorlibbase}/%{rubyxver}/tcltk.rb
-%exclude	%{vendorlibbase}/%{rubyxver}/tk
-%exclude	%{vendorlibbase}/%{rubyxver}/tk*.rb
-%exclude	%{vendorlibbase}/%{rubyxver}/tkextlib
-%exclude	%{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/tcltklib.so
-%exclude	%{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/tkutil.so
 ## the following files should goes into ruby-rdoc package.
 %exclude	%{vendorlibbase}/%{rubyxver}/rdoc
 ## the following files should goes into ruby-irb package.
@@ -490,22 +437,6 @@ rm -rf $RPM_BUILD_ROOT
 %{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/racc
 %{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/rbconfig.rb
 
-%files tcltk
-%defattr(-, root, root, -)
-%doc	%{name}-%{arcver}/COPYING*
-%doc	%{name}-%{arcver}/ChangeLog
-%doc	%{name}-%{arcver}/GPL
-%doc	%{name}-%{arcver}/LEGAL
-%doc	%{name}-%{arcver}/LGPL
-%doc	tmp-ruby-docs/ruby-tcltk/*
-%{vendorlibbase}/%{rubyxver}/*-tk.rb
-%{vendorlibbase}/%{rubyxver}/tcltk.rb
-%{vendorlibbase}/%{rubyxver}/tk
-%{vendorlibbase}/%{rubyxver}/tk*.rb
-%{vendorlibbase}/%{rubyxver}/tkextlib
-%{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/tcltklib.so
-%{vendorarchbase}/%{rubyxver}/%{_normalized_cpu}-%{_target_os}/tkutil.so
-
 %files	rdoc
 %defattr(-, root, root, -)
 %doc	%{name}-%{arcver}/COPYING*
@@ -539,8 +470,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/ri
 
 %changelog
-* Tue Aug 16 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-4
-- Restored TCL/TK extension
+* Fri Aug 19 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-5
+- remove TCL/TK
+- --disable-pthreads --without-X11
+
+* Mon Aug 08 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-3
+- Test new build flags
 
 * Wed Aug 03 2011 Sergio Rubio <rubiojr@frameos.org> - 1.8.7.352-2
 - Test new build flags
